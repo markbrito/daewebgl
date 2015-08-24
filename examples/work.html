@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>3D Builder</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body
+        {
+            font-family: Monospace;
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+        }
+        #info
+        {
+            color: #fff;
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            z-index: 100;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="../build/three.min.js"></script>
+    <script src="js/loaders/ColladaLoader.js"></script>
+    <script src="js/Detector.js"></script>
+    <script src="js/libs/stats.min.js"></script>
+    <script>
+var MAINSCALE=0.0040;
+var clock = new THREE.Clock()
+var container, stats;
+var camera=null, scene, renderer, objects,dae;
+var loader = null;
+var firstRender=true;
+var translateZ=0;
+var ZSTEP=0;
+var ZSTEPDEFAULT=0.001;
+var mouse = new THREE.Vector2();
+var rotateY=0;
+var RYSTEP=0;
+var RYSTEPDEFAULT=Math.PI/32;
+var rymouse=null;
+var rotateYButton=false;
+var XDifferential=false;
+var translateButton=false;
+var control=0;
+var images=[];
+var imagesCount=0;
+var maintexture;
+var mainmaterial;
+var driver=null;
+var LINES=false;
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+scene = new THREE.Scene();
+readXmlUsingXPath();
+function load(){
+    loader=new THREE.ColladaLoader();
+    loader.setPreferredShading(THREE.SmoothShading);
+    loader.options.centerGeometry =true;
+    loader.options.subdivideFaces =true;
+    loader.options.convertUpAxis = true;
+    loader.load( document.location.search.split("=")[1], function ( collada ) {
+	dae=collada.scene;
+	setTimeout(function(){traverse(dae);
+			      dae.scale.x = dae.scale.y = dae.scale.z = MAINSCALE;
+			      dae.updateMatrix();
+			      dae.updateMatrixWorld();
+			      scene.add(dae);
+			      init();
+			      animate();},1);
+    });
+}
+function traverse(dae){
+    dae.traverse( function ( child ) {
+	if ( child instanceof THREE.PerspectiveCamera ) {
+	    camera=child;
+	}
+	if ( child instanceof THREE.SkinnedMesh ) {
+		var animation = new THREE.Animation( child, child.geometry.animation );
+		animation.play();
+	}
+	if(child instanceof THREE.Mesh){
+
+	    if(child.material!=null && child.material!=undefined){
+
+		if(child.material.materials!=undefined && child.material.materials!=null){
+		    var mats=child.material.materials;
+		    for(var i=0;i<child.material.materials.length;++i){
+			if(child.material.materials[i] instanceof THREE.MeshBasicMaterial ||
+			    child.material.materials[i] instanceof THREE.MeshLambertMaterial ||
+			    child.material.materials[i] instanceof THREE.MeshPhongMaterial ||
+			    child.material.materials[i] instanceof THREE.MeshNormalMaterial ||
+				child.material.materials[i] instanceof THREE.MeshFaceMaterial ||
+				child.material.materials[i] instanceof THREE.Material ||
+				child.material.materials[i] instanceof THREE.LineBasicMaterial ||
+				child.material.materials[i] instanceof THREE.MeshDepthMaterial)
+			    if(child.material.materials[i].map==null ||
+			       child.material.materials[i].map==undefined ||
+			       (child.material.materials[i].map.image==null ||
+				child.material.materials[i].map.image==undefined)){
+//mats.push(child.material.materials[i]);
+			    }
+
+			if(	child.material.materials[i].map!=null &&
+				child.material.materials[i].map!=undefined){
+
+			    if(child.material.materials[i].map.image!=null &&
+			       child.material.materials[i].map.image!=undefined)
+			    {
+
+				maintexture=child.material.materials[i].map;
+				var w=maintexture.image.width;
+				var h=maintexture.image.height;
+				var wisPow2=false;
+				var hisPow2=false;
+				for(var powi=1;powi<16;++powi){
+				    if(w==Math.pow(2,powi)){wisPow2=true;}
+				    if(h==Math.pow(2,powi)){hisPow2=true;}
+				}
+				if((wisPow2 && hisPow2)){
+				    maintexture.generateMipmaps=true;
+				    maintexture.minFilter =THREE.LinearMipMapNearestFilter;
+				}else
+				{
+				    maintexture.wrapT=THREE.ClampToEdgeWrapping;
+				    maintexture.wrapS=THREE.ClampToEdgeWrapping;
+				    maintexture.minFilter=THREE.LinearFilter;
+				}
+				maintexture.needsUpdate=true;
+				maintexture.image.needsUpdate=true;
+//				mainmaterial=new THREE.MeshPhongMaterial( {map:maintexture, color: null,/* specular: 0x009900, shininess: 30,*/alphaMap :null , shading: THREE.SmoothShading } );    
+				mainmaterial=child.material.materials[i];
+				mainmaterial.needsUpdate=true;
+				mainmaterial.visible=true;
+				mats=[];
+				mats.unshift(mainmaterial);
+				break;
+			    }
+
+			}
+		    }
+		    child.material.materials=mats;
+		}
+	    }
+	}
+    });
+}
+function init() {
+    container = document.createElement( 'div' );
+    document.body.appendChild( container );
+    if(camera==null){
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.025, 100000 );
+	camera.position.set( 0, 0.5, 2 );
+    }
+    if(LINES){
+	var size = 14, step = 1;
+	var geometry = new THREE.Geometry();
+	var material = new THREE.LineBasicMaterial( { color: 0x303030 } );
+	for ( var i = - size; i <= size; i += step ) {
+	    geometry.vertices.push( new THREE.Vector3( - size, - 0.04, i ) );
+	    geometry.vertices.push( new THREE.Vector3(   size, - 0.04, i ) );
+	    geometry.vertices.push( new THREE.Vector3( i, - 0.04, - size ) );
+	    geometry.vertices.push( new THREE.Vector3( i, - 0.04,   size ) );
+	}
+	var line = new THREE.LineSegments( geometry, material );
+	scene.add( line );
+    }
+    scene.add( new THREE.AmbientLight( 0xcccccc ) );
+    var directionalLight = new THREE.DirectionalLight(0xeeeeee );
+    directionalLight.position.x = Math.random() - 0.5;
+    directionalLight.position.y = Math.random() - 0.5;
+    directionalLight.position.z = Math.random() - 0.5;
+    directionalLight.position.normalize();
+    scene.add( directionalLight );
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    container.appendChild( renderer.domElement );
+
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = '0px';
+    container.appendChild( stats.domElement );
+
+    driver=dae.getObjectByName("San_Francisco_49ers_Football_helmet")
+    if(driver!=null && driver!=undefined){
+	driver.needsUpdate=true;
+    }
+    window.addEventListener( 'resize', onWindowResize, false );
+    renderer.domElement.addEventListener('mousemove',
+			    function( event ) {
+				mouse.x = -( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
+},false);
+
+    renderer.domElement.addEventListener( 'contextmenu', function ( event ) {
+	event.preventDefault();
+	event.stopPropagation();
+    }, false );
+    renderer.domElement.addEventListener('mousedown',function(e){
+	if(control==1 || control==0){
+	    translateButton=e.button==2;
+	    rymouse=new THREE.Vector2();
+	    rymouse.x =- ( event.clientX / window.innerWidth ) * 2 - 1;
+	    rymouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+	}
+	if(control==0){
+	    if(ZSTEP==0){
+		if(e.button==0){
+		    ZSTEP=-Math.abs(ZSTEPDEFAULT);
+		}else if(e.button==2){
+		    ZSTEP=Math.abs(ZSTEPDEFAULT);
+		}else{
+		    ZSTEP=0;
+		    translateZ=0;
+		}       
+	    }else{
+		ZSTEP=0;
+	    	translateZ=0;
+	    }
+	}
+    },false);
+    renderer.domElement.addEventListener('mouseup',function(e){
+	rotateY=0;
+	RYSTEP=0;
+	rymouse=null;
+	YDifferential=false;
+	XDifferential=false;
+	translateButton=false;
+    },false);
+    renderer.domElement.addEventListener('mouseout',function(e){
+	rotateY=0;
+	RYSTEP=0;
+	rymouse=null;
+	YDifferential=false;
+	XDifferential=false;
+	translateButton=false;
+    },false);
+    document.body.ondblclick=function(){
+	control=(control+1)%1;setControl();
+    };
+}
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+}
+function animate() {
+    requestAnimationFrame( animate, renderer.domElement );
+    render();
+    stats.update();
+}
+function render() {
+    var timer = Date.now() * 0.0005;
+  if(rymouse!=null){
+	var rotX=(Math.PI*16.0*(parseFloat(rymouse.y-mouse.y)/parseFloat(window.innerWidth)));
+	var rotY=(Math.PI*16.0*(parseFloat(rymouse.x-mouse.x)/parseFloat(window.innerWidth)));
+	if(Math.abs(rymouse.x-mouse.x)<Math.abs(rymouse.y-mouse.y)){
+	    XDifferential=true;
+	    YDifferential=false;
+	}else{
+	    XDifferential=false;
+	    YDifferential=true;
+	}
+	if(translateButton){
+	    if(YDifferential){
+		camera.translateX(mouse.x-rymouse.x);
+	    }
+	    if(XDifferential){
+		camera.translateY(rymouse.y-mouse.y);
+	    }
+	}else{
+	    if(YDifferential){
+		camera.rotateY(rotY);
+	    }
+	    if(XDifferential){
+		camera.rotateX(rotX);
+	    }
+	}
+    }
+    camera.translateZ(translateZ+=ZSTEP);
+  
+    THREE.AnimationHandler.update( clock.getDelta() );
+    renderer.render( scene, camera );
+    if(firstRender==true){
+	firstRender=false;
+	setControl();
+    }
+}
+function setControl(){
+    if(control==2){
+	rymouse=null;
+	YDifferential=false;
+	XDifferential=false;
+	translateZ=0;
+	ZSTEP=0;
+    }
+    if(control==1){
+	translateZ=0;
+	ZSTEP=0;
+    }
+    if(control==0){
+	rymouse=null;
+	YDifferential=false;
+	XDifferential=false;
+    }
+}
+function readXmlUsingXPath(){
+    var xhr = new window.XMLHttpRequest();
+    xhr.open('GET', document.location.search.split("=")[1],true);
+    xhr.onreadystatechange = function(){
+	if(this.readyState == 4 && this.status == 200){
+	    try{
+		var div = document.createElement('div');
+		div.innerHTML = this.responseText;
+		var imgs=div.getElementsByTagName('library_images')[0].getElementsByTagName('init_from');
+		imagesCount=imgs.length;
+		if(imagesCount<=0){load();}
+		for(var idx=0;idx<imagesCount;idx++){
+		    var src=imgs[idx].innerHTML
+		    if(src=="" || src==null || src==undefined){continue;imagesCount--;}
+		    var img=new Image();
+		    img.src=document.location.search.split("=")[1].replace(/[^\/]+\.dae/,"")+src;
+		    img.onload=imgload;
+		    images.push(img);
+		}
+	    }catch(e){alert('Uncached Images: You May Need to refresh the page on the first load to view texture maps');load();}
+	}
+    }
+    xhr.send(null);
+}
+function imgload(e){
+    if(--imagesCount<=0){load();}
+}
+</script>
+</body>
+</html>

@@ -254,12 +254,11 @@ e.preventDefault();
     document.body.ondblclick=function(){
 	control=(control+1)%1;setControl();
     };
-    var el=render.domElement;
-    el.addEventListener("touchstart", mousedown, false);
-    el.addEventListener("touchend", mouseup, false);
-    el.addEventListener("touchcancel", mouseout, false);
-    el.addEventListener("touchleave", mouseout, false);
-    el.addEventListener("touchmove", mousemove, false);
+  el.addEventListener("touchstart", mousedown, false);
+  el.addEventListener("touchend", mouseup, false);
+  el.addEventListener("touchcancel", mouseout, false);
+  el.addEventListener("touchleave", mouseout, false);
+  el.addEventListener("touchmove", mousemove, false);
 }
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;

@@ -805,9 +805,6 @@
 		};
 
 		function onPointerHover( event ) {
-///
-event.preventDefault();
-event.stopPropagation();
 
 			if ( scope.object === undefined || _dragging === true ) return;
 
@@ -836,9 +833,6 @@ event.stopPropagation();
 		}
 
 		function onPointerDown( event ) {
-		    /////
-event.preventDefault();
-event.stopPropagation();
 
 			if ( scope.object === undefined || _dragging === true ) return;
 
@@ -1060,8 +1054,6 @@ event.stopPropagation();
 		}
 
 		function onPointerUp( event ) {
-		event.preventDefault();
-		event.stopPropagation();
 
 			if ( _dragging && ( scope.axis !== null ) ) {
 

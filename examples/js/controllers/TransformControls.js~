@@ -847,7 +847,7 @@
 					event.preventDefault();
 					event.stopPropagation();
 
-//					scope.dispatchEvent( mouseDownEvent );
+					scope.dispatchEvent( mouseDownEvent );
 
 					scope.axis = intersect.object.name;
 
@@ -1058,7 +1058,7 @@
 			if ( _dragging && ( scope.axis !== null ) ) {
 
 				mouseUpEvent.mode = _mode;
-//				scope.dispatchEvent( mouseUpEvent )
+				scope.dispatchEvent( mouseUpEvent )
 
 			}
 

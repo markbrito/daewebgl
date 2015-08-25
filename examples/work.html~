@@ -192,26 +192,19 @@ function init() {
 	driver.needsUpdate=true;
     }
     window.addEventListener( 'resize', onWindowResize, false );
-    var mousemove;
     renderer.domElement.addEventListener('mousemove',
-					 mousemove=function( event ) {
-					     mouse.x = -( event.clientX / window.innerWidth ) * 2 - 1;
-					     mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
+			    function( event ) {
+				mouse.x = -( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
 },false);
 
     renderer.domElement.addEventListener( 'contextmenu', function ( event ) {
 	event.preventDefault();
 	event.stopPropagation();
     }, false );
-    var mousedown;
-    renderer.domElement.addEventListener('mousedown',mousedown=function(e){
-e.preventDefault();
+    renderer.domElement.addEventListener('mousedown',function(e){
 	if(control==1 || control==0){
 	    translateButton=e.button==2;
-	    var touches = evt.changedTouches;
-	    if(touches!=null && touches!=undefined){
-		translateButton=touches.length==2;
-	    }
 	    rymouse=new THREE.Vector2();
 	    rymouse.x =- ( event.clientX / window.innerWidth ) * 2 - 1;
 	    rymouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -232,8 +225,7 @@ e.preventDefault();
 	    }
 	}
     },false);
-    var mouseup;
-    renderer.domElement.addEventListener('mouseup',mouseup=function(e){
+    renderer.domElement.addEventListener('mouseup',function(e){
 	rotateY=0;
 	RYSTEP=0;
 	rymouse=null;
@@ -241,9 +233,7 @@ e.preventDefault();
 	XDifferential=false;
 	translateButton=false;
     },false);
-    
-    var mouseout;
-    renderer.domElement.addEventListener('mouseout',mouseout=function(e){
+    renderer.domElement.addEventListener('mouseout',function(e){
 	rotateY=0;
 	RYSTEP=0;
 	rymouse=null;
@@ -254,11 +244,6 @@ e.preventDefault();
     document.body.ondblclick=function(){
 	control=(control+1)%1;setControl();
     };
-  el.addEventListener("touchstart", mousedown, false);
-  el.addEventListener("touchend", mouseup, false);
-  el.addEventListener("touchcancel", mouseout, false);
-  el.addEventListener("touchleave", mouseout, false);
-  el.addEventListener("touchmove", mousemove, false);
 }
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
